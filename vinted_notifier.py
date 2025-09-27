@@ -253,5 +253,5 @@ def notify_item(item):
 # --- loop principale che gira in background ---
 def background_loop():
     if not TELEGRAM_TOKEN or not CHAT_ID or not VINTED_URL:
-        print("Errore: imposta TELEGRAM_TOKEN, CHAT_ID e
+        print("Errore: imposta TELEGRAM_TOKEN, CHAT_ID e VINTED_URL nelle variabili d'ambiente")
 >>>>>>> 51b03095c7972ebd63f614d2d4dbe3d82283656c
