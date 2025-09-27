@@ -99,4 +99,51 @@ def send_photo_upload(token, chat_id, photo_bytes, caption):
     except Exception as e:
         return False, str(e)
 
-def notif
+def notify_item(item):
+    caption = f"<b>{item['title'] or 'Nuovo annuncio'}</b>\n{item['price']}\n{item['url']}"
+    if item.get("img"):
+        ok, resp = send_photo_by_url(TELEGRAM_TOKEN, CHAT_ID, item["img"], caption)
+        if not ok:
+            try:
+                r = requests.get(item["img"], headers=HEADERS, timeout=15)
+                if r.ok:
+                    ok2, resp2 = send_photo_upload(TELEGRAM_TOKEN, CHAT_ID, r.content, caption)
+                    return ok2, resp2
+                else:
+                    r2 = requests.post(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+                                       json={"chat_id": CHAT_ID, "text": caption, "parse_mode": "HTML"})
+                    return r2.ok, r2.text
+            except Exception as e:
+                return False, str(e)
+        return ok, resp
+    else:
+        r = requests.post(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+                          json={"chat_id": CHAT_ID, "text": caption, "parse_mode": "HTML"})
+        return r.ok, r.text
+
+# --- loop principale che gira in background ---
+def background_loop():
+    if not TELEGRAM_TOKEN or not CHAT_ID or not VINTED_URL:
+        print("Errore: imposta TELEGRAM_TOKEN, CHAT_ID e VINTED_URL nelle variabili d'ambiente")
+        return
+
+    seen = load_seen()
+    while True:
+        try:
+            html = fetch_page(VINTED_URL)
+            items = parse_listings(html)
+            for item in items:
+                if item["id"] not in seen:
+                    notify_item(item)
+                    seen.add(item["id"])
+            save_seen(seen)
+        except Exception as e:
+            print("Errore loop:", e)
+        time.sleep(CHECK_INTERVAL)
+
+# Avvia il background loop in thread separato
+threading.Thread(target=background_loop, daemon=True).start()
+
+# Avvia Flask
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
